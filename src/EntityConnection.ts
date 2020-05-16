@@ -1,5 +1,5 @@
 import { SelectQueryBuilder, Brackets } from 'typeorm';
-import { Connection, ConnectionArguments, Edge } from '@girin/connection';
+import { Connection, ConnectionArguments } from '@girin/connection';
 
 
 export interface EntityConnectionSortOption {
@@ -7,7 +7,7 @@ export interface EntityConnectionSortOption {
   order: 'ASC' | 'DESC';
 }
 
-export class EntityConnection<TEntity extends Object> extends Connection<TEntity, TEntity> {
+export class EntityConnection<TNode, TEntity extends Object> extends Connection<TNode, TEntity> {
 
   protected get alias() { return 'node'; }
 
@@ -21,6 +21,7 @@ export class EntityConnection<TEntity extends Object> extends Connection<TEntity
     args: ConnectionArguments,
     public sortOptions: EntityConnectionSortOption[],
     public queryBuilder: SelectQueryBuilder<TEntity>,
+    public resolveNode: (item: TEntity) => TNode
   ) {
     super(args);
     if (args.first && args.last) {
@@ -39,15 +40,13 @@ export class EntityConnection<TEntity extends Object> extends Connection<TEntity
     }
   }
 
-  public edges: Promise<Edge<EntityConnection<TEntity>>[]>;
+  get totalCount() : Promise<number> {
+    return this.createQueryBuilder().getCount();
+  }
 
   resolveCursor(item: TEntity): string {
     const key = this.sortOptions.map(({ sort }) => item[sort as keyof TEntity]);
     return Buffer.from(JSON.stringify(key)).toString('base64');
-  }
-
-  resolveNode(item: TEntity): TEntity {
-    return item;
   }
 
   createQueryBuilder(): SelectQueryBuilder<TEntity> {
